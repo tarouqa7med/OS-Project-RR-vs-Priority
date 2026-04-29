@@ -1,7 +1,7 @@
 # CPU Scheduling Simulator: Round Robin vs Priority
 
 ## Team Members
-Islam Saad Abu-Deif Mohammed - ID: 20240129
+- Islam Saad Abu-Deif Mohammed - ID: 20240129
 - [Teammate 2] - [ID]
 - [Teammate 3] - [ID]
 - [Teammate 4] - [ID]
