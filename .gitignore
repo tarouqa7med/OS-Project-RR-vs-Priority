@@ -1,1 +1,17 @@
-/build/
+# NetBeans
+nbproject/
+nb-configuration.xml
+build/
+dist/
+*.swp
+
+# Java
+*.class
+*.jar
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
