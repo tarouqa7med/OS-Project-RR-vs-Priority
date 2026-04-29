@@ -1,2 +1,2 @@
-# OS_Project
-OS_Project
+# OS-Project-RR-vs-Priority
+OS-Project-RR-vs-Priority
