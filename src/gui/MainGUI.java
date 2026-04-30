@@ -255,15 +255,24 @@ public class MainGUI extends JFrame {
         add(bottomPanel, BorderLayout.SOUTH);
     }
     
+    // ===== FIXED addProcess() METHOD =====
     private void addProcess() {
         try {
             String id = txtId.getText().trim();
+            
+            // Check for empty ID
+            if (id.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Process ID cannot be empty!", 
+                    "Validation Error", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
             int arrival = Integer.parseInt(txtArrival.getText().trim());
             int burst = Integer.parseInt(txtBurst.getText().trim());
             int priority = Integer.parseInt(txtPriority.getText().trim());
             
             Process p = new Process(id, arrival, burst, priority);
-            validator.clearErrors();
+            validator.clearErrors();  // Only clears error messages, NOT existingIds
             
             if (validator.validateProcess(p)) {
                 processes.add(p);
@@ -288,82 +297,103 @@ public class MainGUI extends JFrame {
         return String.format("%.4f", value);
     }
     
-    private void runSimulation() {
-        if (processes.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Please add at least one process first", 
-                "No Processes", JOptionPane.WARNING_MESSAGE);
+private void runSimulation() {
+    if (processes.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Please add at least one process first", 
+            "No Processes", JOptionPane.WARNING_MESSAGE);
+        return;
+    }
+    
+    int quantum;
+    try {
+        String quantumText = txtQuantum.getText().trim();
+        
+        // Check if quantum field is empty
+        if (quantumText.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Time quantum cannot be empty!", 
+                "Invalid Quantum", JOptionPane.ERROR_MESSAGE);
             return;
         }
         
-        int quantum;
-        try {
-            quantum = Integer.parseInt(txtQuantum.getText().trim());
-            validator.clearErrors();
-            if (!validator.validateQuantum(quantum)) {
-                JOptionPane.showMessageDialog(this, validator.getFormattedErrors(), 
-                    "Invalid Quantum", JOptionPane.ERROR_MESSAGE);
+        quantum = Integer.parseInt(quantumText);
+        
+        // DIRECT VALIDATION - no relying on Validator for this
+        if (quantum <= 0) {
+            JOptionPane.showMessageDialog(this, "ERROR: Time quantum must be greater than zero (got: " + quantum + ")", 
+                "Invalid Quantum", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        
+        // Optional warning for large quantum
+        if (quantum > 50) {
+            int confirm = JOptionPane.showConfirmDialog(this, 
+                "WARNING: Time quantum is very large (" + quantum + ").\nThis may affect performance. Continue anyway?",
+                "Large Quantum Warning", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (confirm != JOptionPane.YES_OPTION) {
                 return;
             }
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Please enter a valid integer for Time Quantum", 
-                "Input Error", JOptionPane.ERROR_MESSAGE);
-            return;
         }
         
-        setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-        
-        try {
-            // Round Robin Simulation
-            RoundRobinScheduler rrScheduler = new RoundRobinScheduler(quantum);
-            rrScheduler.simulate(processes);
-            
-            lastRrEvents = rrScheduler.getGanttChart();
-            lastRrMaxTime = calculateMaxTime(lastRrEvents);
-            drawGanttChart(rrGanttPanel, lastRrEvents, lastRrMaxTime);
-            
-            rrTableModel.setRowCount(0);
-            for (Process p : rrScheduler.getResults()) {
-                rrTableModel.addRow(new Object[]{
-                    p.getId(),
-                    formatNumber(p.getWaitingTime()),
-                    formatNumber(p.getTurnaroundTime()),
-                    formatNumber(p.getResponseTime())
-                });
-            }
-            
-            double rrAvgWT = MetricsCalculator.calculateAverageWaitingTime(rrScheduler.getResults());
-            double rrAvgTAT = MetricsCalculator.calculateAverageTurnaroundTime(rrScheduler.getResults());
-            double rrAvgRT = MetricsCalculator.calculateAverageResponseTime(rrScheduler.getResults());
-            
-            // Priority Simulation
-            PriorityScheduler priorityScheduler = new PriorityScheduler();
-            priorityScheduler.simulate(processes);
-            
-            lastPriorityEvents = priorityScheduler.getGanttChart();
-            lastPriorityMaxTime = calculateMaxTime(lastPriorityEvents);
-            drawGanttChart(priorityGanttPanel, lastPriorityEvents, lastPriorityMaxTime);
-            
-            priorityTableModel.setRowCount(0);
-            for (Process p : priorityScheduler.getResults()) {
-                priorityTableModel.addRow(new Object[]{
-                    p.getId(),
-                    formatNumber(p.getWaitingTime()),
-                    formatNumber(p.getTurnaroundTime()),
-                    formatNumber(p.getResponseTime())
-                });
-            }
-            
-            double priorityAvgWT = MetricsCalculator.calculateAverageWaitingTime(priorityScheduler.getResults());
-            double priorityAvgTAT = MetricsCalculator.calculateAverageTurnaroundTime(priorityScheduler.getResults());
-            double priorityAvgRT = MetricsCalculator.calculateAverageResponseTime(priorityScheduler.getResults());
-            
-            // Build Beautiful Output (without emojis)
-            buildCleanOutput(rrAvgWT, priorityAvgWT, rrAvgTAT, priorityAvgTAT, rrAvgRT, priorityAvgRT);
-            
-        } finally {
-            setCursor(Cursor.getDefaultCursor());
-        }
+    } catch (NumberFormatException e) {
+        JOptionPane.showMessageDialog(this, "Please enter a valid integer for Time Quantum", 
+            "Input Error", JOptionPane.ERROR_MESSAGE);
+        return;
     }
+    
+    setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+    
+    try {
+        // Round Robin Simulation
+        RoundRobinScheduler rrScheduler = new RoundRobinScheduler(quantum);
+        rrScheduler.simulate(processes);
+        
+        lastRrEvents = rrScheduler.getGanttChart();
+        lastRrMaxTime = calculateMaxTime(lastRrEvents);
+        drawGanttChart(rrGanttPanel, lastRrEvents, lastRrMaxTime);
+        
+        rrTableModel.setRowCount(0);
+        for (Process p : rrScheduler.getResults()) {
+            rrTableModel.addRow(new Object[]{
+                p.getId(),
+                formatNumber(p.getWaitingTime()),
+                formatNumber(p.getTurnaroundTime()),
+                formatNumber(p.getResponseTime())
+            });
+        }
+        
+        double rrAvgWT = MetricsCalculator.calculateAverageWaitingTime(rrScheduler.getResults());
+        double rrAvgTAT = MetricsCalculator.calculateAverageTurnaroundTime(rrScheduler.getResults());
+        double rrAvgRT = MetricsCalculator.calculateAverageResponseTime(rrScheduler.getResults());
+        
+        // Priority Simulation
+        PriorityScheduler priorityScheduler = new PriorityScheduler();
+        priorityScheduler.simulate(processes);
+        
+        lastPriorityEvents = priorityScheduler.getGanttChart();
+        lastPriorityMaxTime = calculateMaxTime(lastPriorityEvents);
+        drawGanttChart(priorityGanttPanel, lastPriorityEvents, lastPriorityMaxTime);
+        
+        priorityTableModel.setRowCount(0);
+        for (Process p : priorityScheduler.getResults()) {
+            priorityTableModel.addRow(new Object[]{
+                p.getId(),
+                formatNumber(p.getWaitingTime()),
+                formatNumber(p.getTurnaroundTime()),
+                formatNumber(p.getResponseTime())
+            });
+        }
+        
+        double priorityAvgWT = MetricsCalculator.calculateAverageWaitingTime(priorityScheduler.getResults());
+        double priorityAvgTAT = MetricsCalculator.calculateAverageTurnaroundTime(priorityScheduler.getResults());
+        double priorityAvgRT = MetricsCalculator.calculateAverageResponseTime(priorityScheduler.getResults());
+        
+        // Build Beautiful Output
+        buildCleanOutput(rrAvgWT, priorityAvgWT, rrAvgTAT, priorityAvgTAT, rrAvgRT, priorityAvgRT);
+        
+    } finally {
+        setCursor(Cursor.getDefaultCursor());
+    }
+}
     
     private void buildCleanOutput(double rrWT, double prWT, double rrTAT, double prTAT, double rrRT, double prRT) {
         StringBuilder sb = new StringBuilder();
@@ -594,8 +624,10 @@ public class MainGUI extends JFrame {
         }
     }
     
+    // ===== FIXED clearAll() METHOD =====
     private void clearAll() {
         processes.clear();
+        validator.reset();  // IMPORTANT: Reset validator's internal state
         tableModel.setRowCount(0);
         rrTableModel.setRowCount(0);
         priorityTableModel.setRowCount(0);

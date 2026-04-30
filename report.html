@@ -20,12 +20,10 @@
         .result-box { background: #e8f4f8; border-left: 5px solid #2a5298; padding: 20px; margin: 20px 0; border-radius: 10px; }
         .winner { background: #d4edda; border-left-color: #28a745; }
         .code-block { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 10px; overflow-x: auto; font-family: monospace; margin: 15px 0; }
-        .screenshot-placeholder { background: #e9ecef; border: 2px dashed #6c757d; padding: 40px; text-align: center; margin: 20px 0; border-radius: 10px; color: #6c757d; }
         .badge { display: inline-block; background: #28a745; color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; margin-right: 10px; }
         footer { background: #1e293b; color: #94a3b8; text-align: center; padding: 20px; font-size: 0.8rem; }
         @media print {
             body { padding: 0; }
-            .screenshot-placeholder { border: 1px solid #ccc; background: white; }
             .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
     </style>
@@ -33,31 +31,30 @@
 <body>
 <div class="report">
     <div class="header">
-        <h1>🖥️ CPU Scheduling Simulator</h1>
+        <h1>CPU Scheduling Simulator</h1>
         <p>Round Robin vs Priority Scheduling - Final Project Report</p>
-        <p><strong>[Your Name]</strong> | Student ID: <strong>[Your ID]</strong></p>
-        <p>Operating Systems Course | [Semester/Year]</p>
+        <p>Operating Systems Course</p>
     </div>
     
     <div class="content">
         <!-- Executive Summary -->
-        <h2>📋 Executive Summary</h2>
+        <h2>Executive Summary</h2>
         <p>This project implements and compares two CPU scheduling algorithms: <strong>Round Robin (RR)</strong> and <strong>Preemptive Priority Scheduling</strong>. The simulator allows users to input multiple processes with arrival times, burst times, and priorities, then runs both algorithms on the identical workload to produce a fair comparison.</p>
         
         <div class="result-box">
-            <strong>🎯 Key Findings:</strong>
+            <strong>Key Findings:</strong>
             <ul style="margin-top: 10px; margin-left: 20px;">
-                <li>Priority Scheduling achieved <strong>15% lower average waiting time</strong></li>
-                <li>Round Robin achieved <strong>45% faster average response time</strong></li>
+                <li>Priority Scheduling achieved lower average waiting time</li>
+                <li>Round Robin achieved faster average response time</li>
                 <li>Round Robin provides better fairness and prevents starvation</li>
-                <li>Priority Scheduling favors urgent tasks but risks starvation</li>
+                <li>Priority Scheduling favors urgent tasks but risks starvation for low-priority processes</li>
             </ul>
         </div>
         
         <!-- Algorithms -->
-        <h2>⚙️ Algorithm Explanations</h2>
+        <h2>Algorithm Explanations</h2>
         
-        <h3>🟢 Round Robin (RR)</h3>
+        <h3>Round Robin (RR)</h3>
         <p><strong>How it works:</strong> Each process gets a fixed time slice (time quantum). Processes are executed in FIFO order from the ready queue. If a process doesn't finish within its quantum, it goes to the back of the queue.</p>
         <div class="code-block">
         Round Robin Algorithm:
@@ -69,7 +66,7 @@
         6. Repeat until all processes complete
         </div>
         
-        <h3>🔴 Priority Scheduling (Preemptive)</h3>
+        <h3>Priority Scheduling (Preemptive)</h3>
         <p><strong>How it works:</strong> Each process has a priority (1 = highest, 10 = lowest). The CPU always executes the highest priority ready process. If a higher priority process arrives, the current process is preempted immediately.</p>
         <div class="code-block">
         Priority Scheduling Algorithm:
@@ -81,12 +78,13 @@
         </div>
         
         <div class="result-box">
-            <strong>⚡ Priority Rule:</strong> Lower number = Higher priority (1 is highest, 10 is lowest)
-            <br><strong>⚡ Tie-breaking:</strong> First Come First Served (FCFS) for equal priorities
+            <strong>Priority Rule:</strong> Lower number = Higher priority (1 is highest, 10 is lowest)<br>
+            <strong>Tie-breaking:</strong> First Come First Served (FCFS) for equal priorities<br>
+            <strong>Preemptive:</strong> Yes - higher priority process interrupts current process
         </div>
         
         <!-- Metrics -->
-        <h2>📊 Metrics Calculated</h2>
+        <h2>Metrics Calculated</h2>
         <table>
             <thead><tr><th>Metric</th><th>Formula</th><th>Meaning</th></thead>
             <tbody>
@@ -97,162 +95,94 @@
         </table>
         
         <!-- Test Scenarios -->
-        <h2>🧪 Test Scenarios & Results</h2>
+        <h2>Test Scenarios & Results</h2>
         
-        <!-- Scenario 1 -->
-        <h3>📌 Scenario 1: Basic Mixed Workload</h3>
-        <table>
-            <thead><tr><th>ID</th><th>Arrival</th><th>Burst</th><th>Priority</th></tr></thead>
-            <tbody>
-                <tr><td>P1</td><td>0</td><td>8</td><td>3</td></tr>
-                <tr><td>P2</td><td>1</td><td>4</td><td>2</td></tr>
-                <tr><td>P3</td><td>2</td><td>9</td><td>1</td></tr>
-                <tr><td>P4</td><td>3</td><td>5</td><td>4</td></tr>
-            </tbody>
-        </table>
-        <p><strong>Quantum:</strong> 3</p>
-        
+        <h3>Test Case 1: Basic Mixed Workload</h3>
+        <p><strong>Input:</strong> P1(0,8,3), P2(1,4,2), P3(2,9,1), P4(3,5,4) | Quantum: 3</p>
         <div class="result-box">
-            <strong>Results:</strong><br>
-            Round Robin Avg WT: 8.67 | Priority Avg WT: 7.33<br>
-            Round Robin Avg TAT: 15.67 | Priority Avg TAT: 14.33<br>
-            Round Robin Avg RT: 4.00 | Priority Avg RT: 7.33
+            <strong>Observation:</strong> Priority Scheduling produced lower waiting time and turnaround time. Round Robin produced faster response time.
         </div>
         
-        <div class="screenshot-placeholder">📸 [Insert Screenshot: Input Table, Both Gantt Charts, Results Tables, Comparison]</div>
+        <h3>Test Case 2: Urgency Case</h3>
+        <p><strong>Input:</strong> P1(0,15,5), P2(0,2,1), P3(2,3,1) | Quantum: 2</p>
+        <div class="result-box">
+            <strong>Observation:</strong> Priority Scheduling completed P2 (priority 1) instantly at time 0-2, demonstrating advantage for urgent tasks.
+        </div>
         
-        <!-- Scenario 2 -->
-        <h3>📌 Scenario 2: Urgency Case</h3>
-        <table>
-            <thead><tr><th>ID</th><th>Arrival</th><th>Burst</th><th>Priority</th></tr></thead>
-            <tbody>
-                <tr><td>P1</td><td>0</td><td>15</td><td>5</td></tr>
-                <tr><td>P2</td><td>0</td><td>2</td><td>1</td></tr>
-                <tr><td>P3</td><td>2</td><td>3</td><td>1</td></tr>
-            </tbody>
-        </table>
-        <p><strong>Quantum:</strong> 2</p>
-        <div class="screenshot-placeholder">📸 [Insert Screenshot: Priority showing P2 running first at time 0]</div>
+        <h3>Test Case 3: Fairness Test</h3>
+        <p><strong>Input:</strong> P1(0,10,2), P2(0,10,2), P3(0,10,2) | Quantum: 3</p>
+        <div class="result-box">
+            <strong>Observation:</strong> Round Robin distributed CPU equally (all processes finished within 1 unit of each other). Priority Scheduling (FCFS tie-breaker) executed P1, then P2, then P3 - unfair to P3 which waited 20 units.
+        </div>
         
-        <!-- Scenario 3 -->
-        <h3>📌 Scenario 3: Fairness Test</h3>
-        <table>
-            <thead><tr><th>ID</th><th>Arrival</th><th>Burst</th><th>Priority</th></tr></thead>
-            <tbody>
-                <tr><td>P1</td><td>0</td><td>10</td><td>2</td></tr>
-                <tr><td>P2</td><td>0</td><td>10</td><td>2</td></tr>
-                <tr><td>P3</td><td>0</td><td>10</td><td>2</td></tr>
-            </tbody>
-        </table>
-        <p><strong>Quantum:</strong> 3</p>
-        <div class="screenshot-placeholder">📸 [Insert Screenshot: Round Robin showing equal distribution]</div>
+        <h3>Test Case 4: Starvation Risk</h3>
+        <p><strong>Input:</strong> P1(0,3,1), P2(1,3,1), P3(2,3,1), P4(0,100,10) | Quantum: 2</p>
+        <div class="result-box">
+            <strong>Observation:</strong> Under Priority Scheduling, P4 (priority 10) waited significantly longer, demonstrating starvation risk. Round Robin gave P4 fair CPU time slices.
+        </div>
         
-        <!-- Scenario 4 -->
-        <h3>📌 Scenario 4: Starvation Risk</h3>
-        <table>
-            <thead><tr><th>ID</th><th>Arrival</th><th>Burst</th><th>Priority</th></tr></thead>
-            <tbody>
-                <tr><td>P1</td><td>0</td><td>3</td><td>1</td></tr>
-                <tr><td>P2</td><td>1</td><td>3</td><td>1</td></tr>
-                <tr><td>P3</td><td>2</td><td>3</td><td>1</td></tr>
-                <tr><td>P4</td><td>0</td><td>100</td><td>10</td></tr>
-            </tbody>
-        </table>
-        <p><strong>Quantum:</strong> 2</p>
-        <div class="screenshot-placeholder">📸 [Insert Screenshot: Priority showing P4 waiting very long]</div>
-        
-        <!-- Scenario 5 -->
-        <h3>📌 Scenario 5: Validation Test</h3>
-        <ul>
-            <li>Duplicate ID: Adding P1 twice → Error message appears</li>
-            <li>Negative Burst: Burst = -5 → Error message appears</li>
-            <li>Negative Arrival: Arrival = -1 → Error message appears</li>
-            <li>Priority out of range: Priority = 15 → Error message appears</li>
-            <li>Zero Quantum: Quantum = 0 → Error message appears</li>
-        </ul>
-        <div class="screenshot-placeholder">📸 [Insert Screenshot: Validation error message]</div>
+        <h3>Test Case 5: Validation Test</h3>
+        <p><strong>Invalid inputs tested:</strong> Duplicate ID, negative burst, negative arrival, priority out of range (0 and 15), zero quantum.</p>
+        <div class="result-box">
+            <strong>Observation:</strong> All invalid inputs were rejected with clear error messages. Program did not crash.
+        </div>
         
         <!-- Analysis -->
-        <h2>📈 Analysis & Findings</h2>
+        <h2>Analysis & Findings</h2>
         
         <div class="result-box winner">
-            <strong>🏆 Which algorithm produced lower average waiting time?</strong><br>
-            <strong>Priority Scheduling</strong> (7.33 vs 8.67). High-priority processes get served immediately.
+            <strong>Which algorithm produced lower average waiting time?</strong><br>
+            <strong>Priority Scheduling</strong>. High-priority processes are served immediately, reducing queue time.
         </div>
         
         <div class="result-box winner">
-            <strong>🏆 Which algorithm produced lower response time?</strong><br>
-            <strong>Round Robin</strong> (4.00 vs 7.33). Time-slicing ensures every process gets CPU access quickly.
+            <strong>Which algorithm produced lower average response time?</strong><br>
+            <strong>Round Robin</strong>. Time-slicing ensures every process gets CPU access quickly.
         </div>
         
         <div class="result-box">
-            <strong>⭐ Did higher-priority processes gain significant advantage?</strong><br>
-            Yes. In Priority Scheduling, P3 (priority 1) finished much earlier than lower priority processes.
+            <strong>Did higher-priority processes gain significant advantage?</strong><br>
+            Yes. In Priority Scheduling, processes with priority 1 finished much earlier than lower priority processes. In Test Case 2, P2 (priority 1) finished instantly at time 2.
         </div>
         
         <div class="result-box">
-            <strong>⚖️ Did Round Robin appear more balanced?</strong><br>
-            Yes. Round Robin gave each process roughly equal CPU time, preventing any single process from dominating.
+            <strong>Did Round Robin appear more balanced?</strong><br>
+            Yes. Round Robin gave each process roughly equal CPU time. In Test Case 3, all three identical processes finished within 1 time unit of each other.
         </div>
         
         <div class="result-box">
-            <strong>⚠️ Was starvation observed?</strong><br>
-            Yes. In Scenario 4, P4 (priority 10) under Priority Scheduling waited significantly longer, demonstrating starvation risk.
+            <strong>Was starvation observed?</strong><br>
+            Yes. In Test Case 4, P4 (priority 10) under Priority Scheduling waited significantly longer. With continuous high-priority arrivals, starvation would occur.
         </div>
         
         <div class="result-box">
-            <strong>🔧 How did quantum affect results?</strong><br>
-            Quantum=3 provided good balance. Smaller quantum improves response time but increases overhead. Larger quantum improves throughput but hurts response time.
+            <strong>How did quantum affect results?</strong><br>
+            Quantum=3 provided good balance. Smaller quantum improves response time but increases overhead. Larger quantum improves throughput but worsens response time.
         </div>
         
         <!-- Recommendation -->
-        <h2>💡 Recommendation</h2>
+        <h2>Recommendation</h2>
         <table>
             <thead><tr><th>Use Case</th><th>Recommendation</th><th>Reason</th></tr></thead>
             <tbody>
                 <tr><td>Interactive systems (users)</td><td><span class="badge">Round Robin</span></td><td>Better response time = faster user experience</td></tr>
-                <tr><td>Real-time / urgent tasks</td><td><span class="badge">Priority</span></td><td>Handles importance/urgency correctly</td></tr>
+                <tr><td>Real-time / urgent tasks</td><td><span class="badge">Priority Scheduling</span></td><td>Handles importance/urgency correctly</td></tr>
                 <tr><td>Fairness required</td><td><span class="badge">Round Robin</span></td><td>No process starves, equal CPU distribution</td></tr>
-                <tr><td>Throughput priority</td><td><span class="badge">Priority</span></td><td>Lower waiting time = more completed tasks</td></tr>
+                <tr><td>Throughput priority</td><td><span class="badge">Priority Scheduling</span></td><td>Lower waiting time = more completed tasks</td></tr>
             </tbody>
         </table>
         
         <!-- Conclusion -->
-        <h2>🎯 Conclusion</h2>
+        <h2>Conclusion</h2>
         <div class="result-box">
             <strong>Round Robin</strong> = Better for fairness and interactivity<br>
             <strong>Priority Scheduling</strong> = Better for urgent tasks and throughput<br><br>
             For general-purpose operating systems with interactive users, <strong>Round Robin is recommended</strong>. For real-time or priority-driven systems, <strong>Priority Scheduling is superior</strong>.
         </div>
-        
-        <!-- Technology Stack -->
-        <h2>🛠️ Technology Stack</h2>
-        <ul>
-            <li><strong>Language:</strong> Java 11+</li>
-            <li><strong>GUI Framework:</strong> Swing</li>
-            <li><strong>IDE:</strong> NetBeans</li>
-            <li><strong>Version Control:</strong> Git + GitHub Desktop</li>
-        </ul>
-        
-        <!-- Project Structure -->
-        <h2>📁 Project Structure</h2>
-        <div class="code-block">
-        OS-Scheduler-RR-Priority/
-        ├── src/
-        │   ├── model/          # Process, GanttEvent
-        │   ├── scheduler/      # RoundRobinScheduler, PriorityScheduler
-        │   ├── metrics/        # MetricsCalculator
-        │   ├── util/           # Validator
-        │   └── gui/            # MainGUI
-        ├── screenshots/        # Test evidence (13 files)
-        ├── test-cases/         # Test documentation
-        └── docs/               # This report
-        </div>
     </div>
     
     <footer>
-        CPU Scheduling Simulator - Round Robin vs Priority Comparison Project<br>
-        [Your Name] | [Your Student ID] | [Date]
+        CPU Scheduling Simulator - Round Robin vs Priority Comparison Project
     </footer>
 </div>
 </body>
