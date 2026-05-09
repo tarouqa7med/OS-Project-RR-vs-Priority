@@ -13,6 +13,8 @@ import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainGUI extends JFrame {
     
@@ -22,18 +24,23 @@ public class MainGUI extends JFrame {
     private JTextField txtId, txtArrival, txtBurst, txtPriority, txtQuantum;
     private JTable processTable;
     private DefaultTableModel tableModel;
-    private JTextArea rrGanttArea, priorityGanttArea;
+    private GanttPanel rrGanttPanel, priorityGanttPanel;
     private JTable rrResultsTable, priorityResultsTable;
     private DefaultTableModel rrTableModel, priorityTableModel;
     private JTextArea comparisonArea;
     
+    private List<GanttEvent> lastRrEvents;
+    private List<GanttEvent> lastPriorityEvents;
+    
     public MainGUI() {
         processes = new ArrayList<>();
         validator = new Validator();
+        lastRrEvents = new ArrayList<>();
+        lastPriorityEvents = new ArrayList<>();
         
         setTitle("CPU Scheduling Simulator - Round Robin vs Priority");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1300, 850);
+        setSize(1400, 900);
         setLayout(new BorderLayout());
         
         createInputPanel();
@@ -106,36 +113,39 @@ public class MainGUI extends JFrame {
     private void createCenterPanel() {
         JSplitPane mainSplitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT);
         mainSplitPane.setResizeWeight(0.5);
-        mainSplitPane.setDividerLocation(400);
+        mainSplitPane.setDividerLocation(350);
         
+        // Gantt Charts Section (Top)
         JPanel topPanel = new JPanel(new GridLayout(1, 2, 10, 10));
         topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
         // Round Robin Gantt
-        JPanel rrPanel = new JPanel(new BorderLayout());
-        rrPanel.setBorder(BorderFactory.createTitledBorder("ROUND ROBIN - Gantt Chart"));
-        rrGanttArea = new JTextArea(5, 40);
-        rrGanttArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        rrGanttArea.setEditable(false);
-        rrGanttArea.setBackground(new Color(240, 255, 240));
-        JScrollPane rrScroll = new JScrollPane(rrGanttArea);
-        rrPanel.add(rrScroll, BorderLayout.CENTER);
-        topPanel.add(rrPanel);
+        JPanel rrContainer = new JPanel(new BorderLayout());
+        rrContainer.setBorder(BorderFactory.createTitledBorder("ROUND ROBIN SCHEDULER"));
+        rrGanttPanel = new GanttPanel();
+        rrGanttPanel.setBackground(Color.WHITE);
+        rrGanttPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        JScrollPane rrScroll = new JScrollPane(rrGanttPanel);
+        rrScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        rrScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        rrContainer.add(rrScroll, BorderLayout.CENTER);
+        topPanel.add(rrContainer);
         
         // Priority Gantt
-        JPanel priorityPanel = new JPanel(new BorderLayout());
-        priorityPanel.setBorder(BorderFactory.createTitledBorder("PRIORITY - Gantt Chart"));
-        priorityGanttArea = new JTextArea(5, 40);
-        priorityGanttArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        priorityGanttArea.setEditable(false);
-        priorityGanttArea.setBackground(new Color(255, 240, 240));
-        JScrollPane priorityScroll = new JScrollPane(priorityGanttArea);
-        priorityPanel.add(priorityScroll, BorderLayout.CENTER);
-        topPanel.add(priorityPanel);
+        JPanel priorityContainer = new JPanel(new BorderLayout());
+        priorityContainer.setBorder(BorderFactory.createTitledBorder("PRIORITY SCHEDULER (Preemptive)"));
+        priorityGanttPanel = new GanttPanel();
+        priorityGanttPanel.setBackground(Color.WHITE);
+        priorityGanttPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        JScrollPane priorityScroll = new JScrollPane(priorityGanttPanel);
+        priorityScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+        priorityScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
+        priorityContainer.add(priorityScroll, BorderLayout.CENTER);
+        topPanel.add(priorityContainer);
         
         mainSplitPane.setTopComponent(topPanel);
         
-        // Metrics Tables
+        // Metrics Tables Section (Bottom)
         JPanel bottomPanel = new JPanel(new GridLayout(1, 2, 10, 10));
         bottomPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         
@@ -168,7 +178,7 @@ public class MainGUI extends JFrame {
         JPanel bottomPanel = new JPanel(new BorderLayout());
         bottomPanel.setBorder(BorderFactory.createTitledBorder("COMPARISON SUMMARY"));
         
-        comparisonArea = new JTextArea(8, 80);
+        comparisonArea = new JTextArea(10, 80);
         comparisonArea.setEditable(false);
         comparisonArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
         comparisonArea.setBackground(new Color(245, 248, 250));
@@ -209,17 +219,6 @@ public class MainGUI extends JFrame {
         }
     }
     
-    private String formatGantt(List<GanttEvent> events) {
-        if (events == null || events.isEmpty()) {
-            return "No Gantt chart available. Run simulation first.";
-        }
-        StringBuilder sb = new StringBuilder();
-        for (GanttEvent e : events) {
-            sb.append(e.toString()).append(" ");
-        }
-        return sb.toString();
-    }
-    
     private String formatNumber(double value) {
         return String.format("%.2f", value);
     }
@@ -232,13 +231,34 @@ public class MainGUI extends JFrame {
         
         int quantum;
         try {
-            quantum = Integer.parseInt(txtQuantum.getText().trim());
-            if (quantum <= 0) {
-                JOptionPane.showMessageDialog(this, "Quantum must be > 0", "Error", JOptionPane.ERROR_MESSAGE);
+            String quantumText = txtQuantum.getText().trim();
+            
+            if (quantumText.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Time quantum cannot be empty!", 
+                    "Invalid Quantum", JOptionPane.ERROR_MESSAGE);
                 return;
             }
+            
+            quantum = Integer.parseInt(quantumText);
+            
+            if (quantum <= 0) {
+                JOptionPane.showMessageDialog(this, "ERROR: Time quantum must be greater than zero (got: " + quantum + ")", 
+                    "Invalid Quantum", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            
+            if (quantum > 50) {
+                int confirm = JOptionPane.showConfirmDialog(this, 
+                    "WARNING: Time quantum is very large (" + quantum + ").\nThis may affect performance. Continue anyway?",
+                    "Large Quantum Warning", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+                if (confirm != JOptionPane.YES_OPTION) {
+                    return;
+                }
+            }
+            
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Invalid quantum value", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Please enter a valid integer for Time Quantum", 
+                "Input Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
         
@@ -248,7 +268,8 @@ public class MainGUI extends JFrame {
             // Round Robin
             RoundRobinScheduler rr = new RoundRobinScheduler(quantum);
             rr.simulate(processes);
-            rrGanttArea.setText(formatGantt(rr.getGanttChart()));
+            lastRrEvents = rr.getGanttChart();
+            rrGanttPanel.setGanttEvents(lastRrEvents);
             
             rrTableModel.setRowCount(0);
             for (Process p : rr.getResults()) {
@@ -267,7 +288,8 @@ public class MainGUI extends JFrame {
             // Priority
             PriorityScheduler ps = new PriorityScheduler();
             ps.simulate(processes);
-            priorityGanttArea.setText(formatGantt(ps.getGanttChart()));
+            lastPriorityEvents = ps.getGanttChart();
+            priorityGanttPanel.setGanttEvents(lastPriorityEvents);
             
             priorityTableModel.setRowCount(0);
             for (Process p : ps.getResults()) {
@@ -323,9 +345,13 @@ public class MainGUI extends JFrame {
         tableModel.setRowCount(0);
         rrTableModel.setRowCount(0);
         priorityTableModel.setRowCount(0);
-        rrGanttArea.setText("");
-        priorityGanttArea.setText("");
         comparisonArea.setText("");
+        
+        lastRrEvents.clear();
+        lastPriorityEvents.clear();
+        rrGanttPanel.setGanttEvents(lastRrEvents);
+        priorityGanttPanel.setGanttEvents(lastPriorityEvents);
+        
         txtId.setText("");
         txtArrival.setText("");
         txtBurst.setText("");
@@ -335,5 +361,132 @@ public class MainGUI extends JFrame {
     
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new MainGUI());
+    }
+    
+    // ===== INNER CLASS: Graphical Gantt Chart Panel =====
+    class GanttPanel extends JPanel {
+        private List<GanttEvent> events;
+        private final Color[] colors = {
+            new Color(66, 133, 244),  // Blue
+            new Color(234, 67, 53),   // Red
+            new Color(52, 168, 83),   // Green
+            new Color(251, 188, 5),   // Yellow
+            new Color(155, 66, 245),  // Purple
+            new Color(255, 87, 34),   // Orange
+            new Color(46, 125, 50),   // Dark Green
+            new Color(194, 24, 91),   // Pink
+            new Color(96, 125, 139),  // Blue Grey
+            new Color(121, 85, 72)    // Brown
+        };
+        
+        public GanttPanel() {
+            events = new ArrayList<>();
+            setBackground(Color.WHITE);
+            setPreferredSize(new Dimension(800, 100));
+        }
+        
+        public void setGanttEvents(List<GanttEvent> events) {
+            this.events = events;
+            repaint();
+            revalidate();
+        }
+        
+        @Override
+        public Dimension getPreferredSize() {
+            if (events == null || events.isEmpty()) {
+                return new Dimension(800, 100);
+            }
+            
+            int maxTime = 0;
+            for (GanttEvent e : events) {
+                if (e.getEndTime() > maxTime) maxTime = e.getEndTime();
+            }
+            
+            int width = Math.max(800, maxTime * 45);
+            return new Dimension(width, 100);
+        }
+        
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            Graphics2D g2d = (Graphics2D) g;
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            if (events == null || events.isEmpty()) {
+                g2d.setColor(Color.GRAY);
+                g2d.setFont(new Font("Segoe UI", Font.ITALIC, 14));
+                g2d.drawString("No Gantt chart available. Run simulation first.", 20, 50);
+                return;
+            }
+            
+            int y = 20;
+            int height = 50;
+            
+            int maxTime = 0;
+            for (GanttEvent e : events) {
+                if (e.getEndTime() > maxTime) maxTime = e.getEndTime();
+            }
+            if (maxTime == 0) maxTime = 1;
+            
+            double scale = (double) (getWidth() - 80) / maxTime;
+            
+            Map<String, Color> processColors = new HashMap<>();
+            int colorIndex = 0;
+            int x = 40;
+            
+            for (GanttEvent e : events) {
+                if (!processColors.containsKey(e.getProcessId())) {
+                    processColors.put(e.getProcessId(), colors[colorIndex % colors.length]);
+                    colorIndex++;
+                }
+                
+                int duration = e.getEndTime() - e.getStartTime();
+                int blockWidth = (int) (duration * scale);
+                if (blockWidth < 3) blockWidth = 3;
+                
+                // Draw colored rectangle
+                g2d.setColor(processColors.get(e.getProcessId()));
+                g2d.fillRect(x, y, blockWidth, height);
+                g2d.setColor(Color.BLACK);
+                g2d.drawRect(x, y, blockWidth, height);
+                
+                // Draw process ID inside block
+                g2d.setColor(Color.BLACK);
+                g2d.setFont(new Font("Arial", Font.BOLD, 11));
+                String text = e.getProcessId();
+                int textWidth = g2d.getFontMetrics().stringWidth(text);
+                if (blockWidth > textWidth + 6) {
+                    g2d.drawString(text, x + (blockWidth - textWidth) / 2, y + height / 2 + 4);
+                }
+                
+                // Draw duration if space permits
+                if (blockWidth > 35) {
+                    g2d.setFont(new Font("Arial", Font.PLAIN, 9));
+                    String durText = duration + "";
+                    int durWidth = g2d.getFontMetrics().stringWidth(durText);
+                    if (blockWidth > durWidth + 10) {
+                        g2d.setColor(Color.WHITE);
+                        g2d.drawString(durText, x + (blockWidth - durWidth) / 2, y + height - 8);
+                        g2d.setColor(Color.BLACK);
+                    }
+                }
+                
+                x += blockWidth;
+            }
+            
+            // Draw time markers
+            g2d.setColor(Color.GRAY);
+            g2d.setFont(new Font("Arial", Font.PLAIN, 9));
+            for (int t = 0; t <= maxTime; t += Math.max(1, maxTime / 10)) {
+                int markerX = 40 + (int) (t * scale);
+                if (markerX <= getWidth() - 20) {
+                    g2d.drawLine(markerX, y + height, markerX, y + height + 5);
+                    g2d.drawString(String.valueOf(t), markerX - 4, y + height + 18);
+                }
+            }
+            
+            // Draw axis label
+            g2d.drawString("Time →", 10, y + height + 15);
+        }
     }
 }
