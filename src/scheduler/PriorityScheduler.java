@@ -3,7 +3,6 @@ package scheduler;
 import model.Process;
 import model.GanttEvent;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class PriorityScheduler {
     private List<Process> results;
@@ -18,97 +17,87 @@ public class PriorityScheduler {
         results.clear();
         ganttChart.clear();
         
-        // Create copies of all processes
-        List<Process> remainingProcesses = new ArrayList<>();
+        // Create copies
+        List<Process> allProcesses = new ArrayList<>();
         for (Process p : processes) {
-            remainingProcesses.add(p.copy());
+            allProcesses.add(p.copy());
         }
         
         int currentTime = 0;
         int completed = 0;
-        Process currentProcess = null;
-        int startTime = 0;
-        int totalProcesses = remainingProcesses.size();
+        int total = allProcesses.size();
         
-        while (completed < totalProcesses) {
-            // Create a final copy for lambda (FIX #1)
-            final int timeNow = currentTime;
-            
-            // Get ready processes (arrived and not finished)
-            List<Process> ready = remainingProcesses.stream()
-                .filter(p -> p.getArrivalTime() <= timeNow && !p.isFinished())
-                .collect(Collectors.toList());
-            
-            // If no ready process, jump to next arrival
-            if (ready.isEmpty()) {
-                Process nextProcess = null;
-                int nextArrival = Integer.MAX_VALUE;
-                for (Process p : remainingProcesses) {
-                    if (!p.isFinished() && p.getArrivalTime() < nextArrival) {
-                        nextArrival = p.getArrivalTime();
-                        nextProcess = p;
-                    }
+        // Min-heap for ready queue based on priority (lower number = higher priority)
+        PriorityQueue<Process> readyQueue = new PriorityQueue<>(
+            Comparator.comparingInt(Process::getPriority)
+                .thenComparingInt(Process::getArrivalTime)
+        );
+        
+        // Sort by arrival time to easily add new processes
+        allProcesses.sort(Comparator.comparingInt(Process::getArrivalTime));
+        
+        int processIndex = 0;
+        Process currentProcess = null;
+        int currentStartTime = 0;
+        
+        while (completed < total) {
+            // Add all processes that have arrived by currentTime to ready queue
+            while (processIndex < total && allProcesses.get(processIndex).getArrivalTime() <= currentTime) {
+                Process p = allProcesses.get(processIndex);
+                if (!p.isFinished()) {
+                    readyQueue.add(p);
                 }
-                if (nextProcess != null) {
-                    currentTime = nextArrival;
-                }
-                continue;
+                processIndex++;
             }
             
-            // Select highest priority (lower number = higher priority)
-            Process next = ready.stream()
-                .min(Comparator.comparingInt(Process::getPriority))
-                .orElse(null);
-            
-            // Handle context switch
-            if (currentProcess == null || next != currentProcess) {
-                if (currentProcess != null && startTime < currentTime) {
-                    ganttChart.add(new GanttEvent(currentProcess.getId(), startTime, currentTime));
+            // If no process in ready queue, jump to next arrival
+            if (readyQueue.isEmpty()) {
+                if (processIndex < total) {
+                    currentTime = allProcesses.get(processIndex).getArrivalTime();
+                    continue;
+                } else {
+                    break;
                 }
-                currentProcess = next;
-                startTime = currentTime;
+            }
+            
+            // Get the highest priority process
+            Process nextProcess = readyQueue.peek();
+            
+            // If this is a different process than current, handle preemption
+            if (currentProcess == null || nextProcess != currentProcess) {
+                // Record previous process's Gantt segment
+                if (currentProcess != null && currentStartTime < currentTime) {
+                    ganttChart.add(new GanttEvent(currentProcess.getId(), currentStartTime, currentTime));
+                    // Put the preempted process back in ready queue
+                    if (!currentProcess.isFinished()) {
+                        readyQueue.add(currentProcess);
+                    }
+                }
                 
-                // Record response time if first run
+                currentProcess = readyQueue.poll();
+                currentStartTime = currentTime;
+                
+                // Record response time on first run
                 if (currentProcess.isFirstRun()) {
                     currentProcess.setResponseTime(currentTime - currentProcess.getArrivalTime());
                     currentProcess.setFirstRun(false);
                 }
             }
             
-            // Calculate time until next arrival (FIX #2 - no lambda with changing variable)
+            // Calculate how long this process can run
             int timeToFinish = currentProcess.getRemainingTime();
-            int nextArrivalTime = Integer.MAX_VALUE;
             
-            // Find next arrival time (manual loop instead of lambda)
-            for (Process p : remainingProcesses) {
-                if (p.getArrivalTime() > currentTime && !p.isFinished()) {
-                    if (p.getArrivalTime() < nextArrivalTime) {
-                        nextArrivalTime = p.getArrivalTime();
-                    }
-                }
+            // Find next arrival time
+            int nextArrival = Integer.MAX_VALUE;
+            if (processIndex < total) {
+                nextArrival = allProcesses.get(processIndex).getArrivalTime();
             }
             
             // Check if a higher priority process will arrive before we finish
-            int preemptTime = nextArrivalTime;
-            boolean willBePreempted = false;
-            
-            for (Process p : remainingProcesses) {
-                if (p.getArrivalTime() > currentTime && 
-                    p.getArrivalTime() < currentTime + timeToFinish &&
-                    !p.isFinished()) {
-                    if (p.getPriority() < currentProcess.getPriority()) {
-                        if (p.getArrivalTime() < preemptTime) {
-                            preemptTime = p.getArrivalTime();
-                            willBePreempted = true;
-                        }
-                    }
-                }
-            }
-            
-            // Determine how long to run
             int runTime;
-            if (willBePreempted) {
-                runTime = preemptTime - currentTime;
+            if (nextArrival < currentTime + timeToFinish) {
+                // A new process will arrive before we finish
+                runTime = nextArrival - currentTime;
             } else {
                 runTime = timeToFinish;
             }
@@ -117,9 +106,9 @@ public class PriorityScheduler {
             currentProcess.execute(runTime);
             currentTime += runTime;
             
-            // Check if finished
+            // Check if process finished
             if (currentProcess.isFinished()) {
-                ganttChart.add(new GanttEvent(currentProcess.getId(), startTime, currentTime));
+                ganttChart.add(new GanttEvent(currentProcess.getId(), currentStartTime, currentTime));
                 currentProcess.setCompletionTime(currentTime);
                 currentProcess.calculateTurnaroundTime();
                 currentProcess.calculateWaitingTime();
@@ -138,13 +127,5 @@ public class PriorityScheduler {
     
     public List<GanttEvent> getGanttChart() { 
         return new ArrayList<>(ganttChart); 
-    }
-    
-    public String getGanttChartString() {
-        StringBuilder sb = new StringBuilder();
-        for (GanttEvent e : ganttChart) {
-            sb.append(e.toString()).append(" ");
-        }
-        return sb.toString().trim();
     }
 }

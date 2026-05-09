@@ -14,7 +14,9 @@ public class GanttEvent {
     public String getProcessId() { return processId; }
     public int getStartTime() { return startTime; }
     public int getEndTime() { return endTime; }
+    public int getDuration() { return endTime - startTime; }
     
+    @Override
     public String toString() {
         return processId + "[" + startTime + "-" + endTime + "]";
     }

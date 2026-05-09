@@ -19,43 +19,63 @@ public class RoundRobinScheduler {
         results.clear();
         ganttChart.clear();
         
-        List<Process> remainingProcesses = new ArrayList<>();
+        // Create copies
+        List<Process> allProcesses = new ArrayList<>();
         for (Process p : processes) {
-            remainingProcesses.add(p.copy());
+            allProcesses.add(p.copy());
         }
+        
+        // Sort by arrival time
+        allProcesses.sort(Comparator.comparingInt(Process::getArrivalTime));
         
         Queue<Process> readyQueue = new LinkedList<>();
         int currentTime = 0;
         int completed = 0;
+        int total = allProcesses.size();
+        int index = 0; // to track which processes have been added
         
-        while (completed < remainingProcesses.size()) {
-            for (Process p : remainingProcesses) {
-                if (p.getArrivalTime() <= currentTime && !p.isFinished() && !readyQueue.contains(p)) {
+        while (completed < total) {
+            // Add all processes that have arrived by currentTime
+            while (index < total && allProcesses.get(index).getArrivalTime() <= currentTime) {
+                Process p = allProcesses.get(index);
+                if (!p.isFinished()) {
                     readyQueue.add(p);
+                }
+                index++;
+            }
+            
+            // If queue is empty, jump to next arrival time
+            if (readyQueue.isEmpty()) {
+                if (index < total) {
+                    currentTime = allProcesses.get(index).getArrivalTime();
+                    continue;
+                } else {
+                    break;
                 }
             }
             
-            if (readyQueue.isEmpty()) {
-                Process next = remainingProcesses.stream()
-                    .filter(p -> !p.isFinished())
-                    .min(Comparator.comparingInt(Process::getArrivalTime))
-                    .orElse(null);
-                if (next != null) currentTime = next.getArrivalTime();
-                continue;
-            }
-            
+            // Get next process from queue
             Process current = readyQueue.poll();
             
+            // Record response time on first run
             if (current.isFirstRun()) {
                 current.setResponseTime(currentTime - current.getArrivalTime());
                 current.setFirstRun(false);
             }
             
-            int run = Math.min(quantum, current.getRemainingTime());
-            ganttChart.add(new GanttEvent(current.getId(), currentTime, currentTime + run));
-            current.execute(run);
-            currentTime += run;
+            // Calculate run time
+            int runTime = Math.min(quantum, current.getRemainingTime());
+            int startTime = currentTime;
+            int endTime = currentTime + runTime;
             
+            // Record Gantt event
+            ganttChart.add(new GanttEvent(current.getId(), startTime, endTime));
+            
+            // Execute
+            current.execute(runTime);
+            currentTime = endTime;
+            
+            // Check if finished
             if (current.isFinished()) {
                 current.setCompletionTime(currentTime);
                 current.calculateTurnaroundTime();
@@ -63,20 +83,27 @@ public class RoundRobinScheduler {
                 completed++;
                 results.add(current);
             } else {
+                // CRITICAL: Before adding back to queue, add any new arrivals
+                while (index < total && allProcesses.get(index).getArrivalTime() <= currentTime) {
+                    Process p = allProcesses.get(index);
+                    if (!p.isFinished()) {
+                        readyQueue.add(p);
+                    }
+                    index++;
+                }
+                // Add current process back to END of queue
                 readyQueue.add(current);
             }
         }
+        
         results.sort(Comparator.comparing(Process::getId));
     }
     
-    public List<Process> getResults() { return results; }
-    public List<GanttEvent> getGanttChart() { return ganttChart; }
+    public List<Process> getResults() { 
+        return new ArrayList<>(results); 
+    }
     
-    public String getGanttChartString() {
-        StringBuilder sb = new StringBuilder();
-        for (GanttEvent e : ganttChart) {
-            sb.append(e.toString()).append(" ");
-        }
-        return sb.toString();
+    public List<GanttEvent> getGanttChart() { 
+        return new ArrayList<>(ganttChart); 
     }
 }
